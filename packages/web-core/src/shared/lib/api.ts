@@ -367,9 +367,7 @@ export const localKanbanApi = {
 
   updateTask: async (
     taskId: string,
-    data: Partial<
-      Pick<LocalKanbanTask, 'title' | 'description' | 'status'>
-    >
+    data: Partial<Pick<LocalKanbanTask, 'title' | 'description' | 'status'>>
   ): Promise<LocalKanbanTask> => {
     const response = await makeRequest(`/api/local-kanban/tasks/${taskId}`, {
       method: 'PATCH',

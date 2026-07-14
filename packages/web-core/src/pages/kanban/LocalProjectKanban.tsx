@@ -1,9 +1,4 @@
-import {
-  useMemo,
-  useState,
-  type DragEvent,
-  type FormEvent,
-} from 'react';
+import { useMemo, useState, type DragEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { PlusIcon, TrashIcon } from '@phosphor-icons/react';
@@ -123,7 +118,9 @@ export function LocalProjectKanban() {
       localKanbanApi.createTask(projectId!, { title }),
     onSuccess: async () => {
       setNewTaskTitle('');
-      await queryClient.invalidateQueries({ queryKey: taskQueryKey(projectId!) });
+      await queryClient.invalidateQueries({
+        queryKey: taskQueryKey(projectId!),
+      });
     },
   });
 
@@ -150,14 +147,18 @@ export function LocalProjectKanban() {
       }
     },
     onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: taskQueryKey(projectId!) });
+      await queryClient.invalidateQueries({
+        queryKey: taskQueryKey(projectId!),
+      });
     },
   });
 
   const deleteTask = useMutation({
     mutationFn: localKanbanApi.deleteTask,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: taskQueryKey(projectId!) });
+      await queryClient.invalidateQueries({
+        queryKey: taskQueryKey(projectId!),
+      });
     },
   });
 
@@ -191,7 +192,9 @@ export function LocalProjectKanban() {
   if (!projectId || !project) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-base bg-primary p-double text-center">
-        <h1 className="text-xl font-semibold text-high">No local project found</h1>
+        <h1 className="text-xl font-semibold text-high">
+          No local project found
+        </h1>
         <p className="max-w-md text-base text-low">
           Add a Git repository in Workspaces first. Each local repository gets
           its own private Kanban board.
@@ -275,7 +278,9 @@ export function LocalProjectKanban() {
               >
                 <div className="flex items-center justify-between border-b border-border px-base py-base">
                   <div className="flex items-center gap-half">
-                    <span className={cn('size-2 rounded-full', column.accent)} />
+                    <span
+                      className={cn('size-2 rounded-full', column.accent)}
+                    />
                     <h2 className="text-base font-semibold text-high">
                       {column.label}
                     </h2>
