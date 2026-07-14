@@ -314,13 +314,6 @@ export const handleApiResponse = async <T, E = T>(
   return result.data as T;
 };
 
-export type LocalTaskStatus =
-  | 'todo'
-  | 'inprogress'
-  | 'inreview'
-  | 'done'
-  | 'cancelled';
-
 export type LocalKanbanProject = {
   id: string;
   name: string;
@@ -335,10 +328,94 @@ export type LocalKanbanTask = {
   project_id: string;
   title: string;
   description: string | null;
-  status: LocalTaskStatus;
-  parent_workspace_id: string | null;
+  column_id: string;
+  project_label: string | null;
+  client_label: string | null;
+  priority: string | null;
+  due_date: string | null;
+  due_time: string | null;
+  recurrence: string | null;
+  completed_date: string | null;
+  linked_note: string | null;
+  cover: string | null;
+  subtasks: LocalKanbanSubtask[];
+  position: number;
   created_at: string;
   updated_at: string;
+};
+
+export type LocalKanbanSubtask = {
+  id: string;
+  title: string;
+  completed: boolean;
+};
+
+export type LocalKanbanColumn = {
+  id: string;
+  name: string;
+  wipLimit: number;
+};
+
+export type LocalKanbanPriority = {
+  id: string;
+  name: string;
+  symbol: string;
+  color: string;
+};
+
+export type LocalKanbanSavedFilter = {
+  id: string;
+  name: string;
+  columnId: string;
+  project: string;
+  client: string;
+  priority: string;
+  due: 'any' | 'overdue' | 'today' | 'this-week' | 'no-date';
+  text: string;
+  hideDone: boolean;
+};
+
+export type LocalKanbanBoardDefinition = {
+  id: string;
+  name: string;
+  projectScope: string[];
+  clientScope: string[];
+  swimlane: 'none' | 'project' | 'client' | 'priority' | 'due';
+  activeFilterId: string;
+  filters: LocalKanbanSavedFilter[];
+};
+
+export type LocalKanbanSettings = {
+  designPreset: 'native' | 'moonlight' | 'trello' | 'linear' | 'notion';
+  columns: LocalKanbanColumn[];
+  defaultColumnId: string;
+  doneColumnId: string;
+  inProgressColumnId: string;
+  autoMoveToday: boolean;
+  autoMoveOverdue: boolean;
+  archiveCompletedTasks: boolean;
+  archiveCompletedTaskDays: number;
+  priorities: LocalKanbanPriority[];
+  projects: Record<string, { id: string; label: string; color: string }>;
+  clients: Record<string, { id: string; label: string; color: string }>;
+  boards: LocalKanbanBoardDefinition[];
+  activeBoardId: string;
+};
+
+export type LocalKanbanTaskInput = {
+  title: string;
+  description?: string;
+  columnId?: string;
+  projectLabel?: string;
+  clientLabel?: string;
+  priority?: string;
+  dueDate?: string;
+  dueTime?: string;
+  recurrence?: string;
+  linkedNote?: string;
+  cover?: string;
+  subtasks?: LocalKanbanSubtask[];
+  position?: number;
 };
 
 export const localKanbanApi = {
@@ -356,7 +433,7 @@ export const localKanbanApi = {
 
   createTask: async (
     projectId: string,
-    data: { title: string; description?: string }
+    data: LocalKanbanTaskInput
   ): Promise<LocalKanbanTask> => {
     const response = await makeRequest(
       `/api/local-kanban/projects/${projectId}/tasks`,
@@ -367,7 +444,7 @@ export const localKanbanApi = {
 
   updateTask: async (
     taskId: string,
-    data: Partial<Pick<LocalKanbanTask, 'title' | 'description' | 'status'>>
+    data: Partial<LocalKanbanTaskInput>
   ): Promise<LocalKanbanTask> => {
     const response = await makeRequest(`/api/local-kanban/tasks/${taskId}`, {
       method: 'PATCH',
@@ -381,6 +458,38 @@ export const localKanbanApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  getSettings: async (projectId: string): Promise<LocalKanbanSettings> => {
+    const response = await makeRequest(
+      `/api/local-kanban/projects/${projectId}/settings`
+    );
+    return handleApiResponse<LocalKanbanSettings>(response);
+  },
+
+  updateSettings: async (
+    projectId: string,
+    settings: LocalKanbanSettings
+  ): Promise<LocalKanbanSettings> => {
+    const response = await makeRequest(
+      `/api/local-kanban/projects/${projectId}/settings`,
+      { method: 'PUT', body: JSON.stringify(settings) }
+    );
+    return handleApiResponse<LocalKanbanSettings>(response);
+  },
+
+  archiveTasks: async (
+    projectId: string,
+    olderThanDays: number
+  ): Promise<number> => {
+    const response = await makeRequest(
+      `/api/local-kanban/projects/${projectId}/archive`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ olderThanDays }),
+      }
+    );
+    return handleApiResponse<number>(response);
   },
 };
 
