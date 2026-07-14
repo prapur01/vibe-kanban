@@ -314,6 +314,78 @@ export const handleApiResponse = async <T, E = T>(
   return result.data as T;
 };
 
+export type LocalTaskStatus =
+  | 'todo'
+  | 'inprogress'
+  | 'inreview'
+  | 'done'
+  | 'cancelled';
+
+export type LocalKanbanProject = {
+  id: string;
+  name: string;
+  default_agent_working_dir: string | null;
+  remote_project_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LocalKanbanTask = {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  status: LocalTaskStatus;
+  parent_workspace_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export const localKanbanApi = {
+  listProjects: async (): Promise<LocalKanbanProject[]> => {
+    const response = await makeRequest('/api/local-kanban/projects');
+    return handleApiResponse<LocalKanbanProject[]>(response);
+  },
+
+  listTasks: async (projectId: string): Promise<LocalKanbanTask[]> => {
+    const response = await makeRequest(
+      `/api/local-kanban/projects/${projectId}/tasks`
+    );
+    return handleApiResponse<LocalKanbanTask[]>(response);
+  },
+
+  createTask: async (
+    projectId: string,
+    data: { title: string; description?: string }
+  ): Promise<LocalKanbanTask> => {
+    const response = await makeRequest(
+      `/api/local-kanban/projects/${projectId}/tasks`,
+      { method: 'POST', body: JSON.stringify(data) }
+    );
+    return handleApiResponse<LocalKanbanTask>(response);
+  },
+
+  updateTask: async (
+    taskId: string,
+    data: Partial<
+      Pick<LocalKanbanTask, 'title' | 'description' | 'status'>
+    >
+  ): Promise<LocalKanbanTask> => {
+    const response = await makeRequest(`/api/local-kanban/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<LocalKanbanTask>(response);
+  },
+
+  deleteTask: async (taskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/local-kanban/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+};
+
 // Sessions API
 export const sessionsApi = {
   getByWorkspace: async (workspaceId: string): Promise<Session[]> => {

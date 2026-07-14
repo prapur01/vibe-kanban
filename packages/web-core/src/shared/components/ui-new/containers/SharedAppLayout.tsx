@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
@@ -16,7 +17,11 @@ import { cn } from '@/shared/lib/utils';
 import { isTauriMac } from '@/shared/lib/platform';
 
 import { NavbarContainer } from './NavbarContainer';
-import { AppBar, type AppBarHostStatus } from '@vibe/ui/components/AppBar';
+import {
+  AppBar,
+  type AppBarHostStatus,
+  type AppBarProject,
+} from '@vibe/ui/components/AppBar';
 import { MobileDrawer } from '@vibe/ui/components/MobileDrawer';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
@@ -55,8 +60,19 @@ import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebar
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
 import { CloudShutdownExportBanner } from '@/shared/components/CloudShutdownExportBanner';
+import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
+import { localKanbanApi } from '@/shared/lib/api';
+
+const LOCAL_PROJECT_COLORS = [
+  '25 82% 54%',
+  '210 70% 55%',
+  '145 55% 45%',
+  '275 60% 60%',
+  '45 80% 50%',
+];
 
 export function SharedAppLayout() {
+  const runtime = useAppRuntime();
   const appNavigation = useAppNavigation();
   const currentDestination = useCurrentAppDestination();
   const isMobile = useIsMobile();
@@ -75,6 +91,13 @@ export function SharedAppLayout() {
   const { hosts: remoteCloudHosts } = useRemoteCloudHostsAppBarModel();
   const { hostId: routeHostId } = useParams({ strict: false });
   const navigate = useNavigate();
+  const isUsingLocalProjects = runtime === 'local' && !isSignedIn;
+
+  const localProjectsQuery = useQuery({
+    queryKey: ['local-kanban', 'projects'],
+    queryFn: localKanbanApi.listProjects,
+    enabled: isUsingLocalProjects,
+  });
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -139,6 +162,17 @@ export function SharedAppLayout() {
   const [orderedProjects, setOrderedProjects] =
     useState<RemoteProject[]>(sortedProjects);
   const [isSavingProjectOrder, setIsSavingProjectOrder] = useState(false);
+
+  const appBarProjects = useMemo<AppBarProject[]>(() => {
+    if (!isUsingLocalProjects) return orderedProjects;
+    return (localProjectsQuery.data ?? []).map((project, index) => ({
+      id: project.id,
+      name: project.name,
+      color:
+        LOCAL_PROJECT_COLORS[index % LOCAL_PROJECT_COLORS.length] ??
+        '25 82% 54%',
+    }));
+  }, [isUsingLocalProjects, localProjectsQuery.data, orderedProjects]);
 
   useEffect(() => {
     if (isSavingProjectOrder) {
@@ -331,7 +365,7 @@ export function SharedAppLayout() {
             />
             {/* Desktop AppBar sidebar. */}
             <AppBar
-              projects={orderedProjects}
+              projects={appBarProjects}
               hosts={remoteCloudHosts}
               activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
@@ -340,13 +374,20 @@ export function SharedAppLayout() {
               onHostClick={handleHostClick}
               onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
-              onProjectsDragEnd={handleProjectsDragEnd}
-              isSavingProjectOrder={isSavingProjectOrder}
+              onProjectsDragEnd={
+                isUsingLocalProjects ? () => {} : handleProjectsDragEnd
+              }
+              isSavingProjectOrder={
+                isUsingLocalProjects ? false : isSavingProjectOrder
+              }
               isWorkspacesActive={isWorkspacesActive}
               isExportActive={isExportActive}
               activeProjectId={activeProjectId}
               isSignedIn={isSignedIn}
-              isLoadingProjects={isLoading}
+              showSignInCta={!isUsingLocalProjects}
+              isLoadingProjects={
+                isUsingLocalProjects ? localProjectsQuery.isLoading : isLoading
+              }
               onSignIn={handleSignIn}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
@@ -479,8 +520,8 @@ export function SharedAppLayout() {
 
             {/* Project list */}
             <div className="flex-1 overflow-y-auto p-2">
-              {isSignedIn ? (
-                orderedProjects.map((project) => (
+              {isSignedIn || isUsingLocalProjects ? (
+                appBarProjects.map((project) => (
                   <button
                     type="button"
                     key={project.id}

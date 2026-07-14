@@ -60,6 +60,7 @@ interface AppBarProps {
   isExportActive?: boolean;
   activeProjectId: string | null;
   isSignedIn?: boolean;
+  showSignInCta?: boolean;
   isLoadingProjects?: boolean;
   onSignIn?: () => void;
   onHoverStart?: () => void;
@@ -212,6 +213,7 @@ export function AppBar({
   isExportActive = false,
   activeProjectId,
   isSignedIn,
+  showSignInCta = true,
   isLoadingProjects,
   onSignIn,
   onHoverStart,
@@ -283,7 +285,7 @@ export function AppBar({
 
   const projectSectionItems: AppBarSectionItem[] = [];
 
-  if (!isSignedIn) {
+  if (!isSignedIn && showSignInCta) {
     projectSectionItems.push({
       key: 'kanban-cta',
       kind: 'kanban-cta',

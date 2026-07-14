@@ -55,4 +55,83 @@ impl Task {
         .fetch_optional(pool)
         .await
     }
+
+    pub async fn find_by_project_id(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as::<_, Task>(
+            r#"SELECT id, project_id, title, description, status, parent_workspace_id,
+                      created_at, updated_at
+               FROM tasks
+               WHERE project_id = ?
+               ORDER BY created_at ASC"#,
+        )
+        .bind(project_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn create(
+        pool: &SqlitePool,
+        project_id: Uuid,
+        title: &str,
+        description: Option<&str>,
+    ) -> Result<Self, sqlx::Error> {
+        let id = Uuid::new_v4();
+
+        sqlx::query(
+            r#"INSERT INTO tasks (id, project_id, title, description, status)
+               VALUES (?, ?, ?, ?, ?)"#,
+        )
+        .bind(id)
+        .bind(project_id)
+        .bind(title)
+        .bind(description)
+        .bind(TaskStatus::Todo)
+        .execute(pool)
+        .await?;
+
+        Self::find_by_id(pool, id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)
+    }
+
+    pub async fn update(
+        pool: &SqlitePool,
+        id: Uuid,
+        title: &str,
+        description: Option<&str>,
+        status: TaskStatus,
+    ) -> Result<Self, sqlx::Error> {
+        sqlx::query(
+            r#"UPDATE tasks
+               SET title = ?, description = ?, status = ?,
+                   updated_at = datetime('now', 'subsec')
+               WHERE id = ?"#,
+        )
+        .bind(title)
+        .bind(description)
+        .bind(status)
+        .bind(id)
+        .execute(pool)
+        .await?;
+
+        Self::find_by_id(pool, id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)
+    }
+
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+        let result = sqlx::query("DELETE FROM tasks WHERE id = ?")
+            .bind(id)
+            .execute(pool)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
+    }
 }
