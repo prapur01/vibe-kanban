@@ -41,14 +41,12 @@ impl Project {
                 .bind(&repo.display_name)
                 .execute(&mut *transaction)
                 .await?;
-            sqlx::query(
-                "INSERT INTO project_repos (id, project_id, repo_id) VALUES (?, ?, ?)",
-            )
-            .bind(Uuid::new_v4())
-            .bind(project_id)
-            .bind(repo.id)
-            .execute(&mut *transaction)
-            .await?;
+            sqlx::query("INSERT INTO project_repos (id, project_id, repo_id) VALUES (?, ?, ?)")
+                .bind(Uuid::new_v4())
+                .bind(project_id)
+                .bind(repo.id)
+                .execute(&mut *transaction)
+                .await?;
         }
 
         transaction.commit().await
