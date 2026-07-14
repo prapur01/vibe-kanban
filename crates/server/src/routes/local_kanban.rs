@@ -41,6 +41,7 @@ fn normalized_title(title: &str) -> Result<&str, ApiError> {
 async fn list_projects(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
+    Project::ensure_for_registered_repos(&deployment.db().pool).await?;
     let projects = Project::find_all(&deployment.db().pool).await?;
     Ok(ResponseJson(ApiResponse::success(projects)))
 }

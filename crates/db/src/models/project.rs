@@ -4,6 +4,8 @@ use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::repo::Repo;
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Project {
     pub id: Uuid,
@@ -17,6 +19,41 @@ pub struct Project {
 }
 
 impl Project {
+    pub async fn ensure_for_registered_repos(pool: &SqlitePool) -> Result<(), sqlx::Error> {
+        let repos = Repo::list_all(pool).await?;
+        let mut transaction = pool.begin().await?;
+
+        for repo in repos {
+            let project_count = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM project_repos WHERE repo_id = ?",
+            )
+            .bind(repo.id)
+            .fetch_one(&mut *transaction)
+            .await?;
+
+            if project_count > 0 {
+                continue;
+            }
+
+            let project_id = Uuid::new_v4();
+            sqlx::query("INSERT INTO projects (id, name) VALUES (?, ?)")
+                .bind(project_id)
+                .bind(&repo.display_name)
+                .execute(&mut *transaction)
+                .await?;
+            sqlx::query(
+                "INSERT INTO project_repos (id, project_id, repo_id) VALUES (?, ?, ?)",
+            )
+            .bind(Uuid::new_v4())
+            .bind(project_id)
+            .bind(repo.id)
+            .execute(&mut *transaction)
+            .await?;
+        }
+
+        transaction.commit().await
+    }
+
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
